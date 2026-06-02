@@ -3,13 +3,13 @@ import pandas as pd
 import streamlit as st
 
 # 1. Page Configuration & Styling (Kept the browser tab icon, removed from main header)
-st.set_page_config(page_title="BotX Diagnostic Tool", page_icon="🤖", layout="centered")
+st.set_page_config(page_title="BotX Diagnostic Tool", page_icon="💥", layout="centered")
 
 # UPDATED: Removed the emoji logo from the title
 st.title("BotX Diagnostic Tool")
 
 # UPDATED: Changed the subtitle text
-st.caption("BotX error code database")
+st.caption("BotX Error Code Database")
 
 # 2. Load the Local Database (Cached so it loads instantly)
 @st.cache_data
@@ -45,7 +45,7 @@ search_term = st.text_input("Search Error Code:", placeholder="e.g., E-000, E010
 # Professional Label Translations
 PROFESSIONAL_LABELS = {
     "error code": "Error Code",
-    "code explanation": "Condition / Description",
+    "code explanation": "Description",
     "first try": "Check 1",
     "then try": "Check 2",
     "lastly it might be": "Check 3",
