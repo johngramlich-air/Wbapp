@@ -1,17 +1,24 @@
-import streamlit as pd
 import pandas as pd
 import streamlit as st
 
-# 1. Page Configuration & Styling (Kept the browser tab icon, removed from main header)
-st.set_page_config(page_title="BotX Diagnostic Tool", page_icon="💥", layout="centered")
+# 1. Page Configuration & Styling
+st.set_page_config(page_title="BotX Diagnostic Tool", page_icon="🧑‍🏭", layout="centered")
 
-# UPDATED: Removed the emoji logo from the title
+# NEW HACK: Forces Streamlit to hide its native headers, footers, and embed bars entirely
+st.markdown("""
+    <style>
+    header {visibility: hidden !important; display: none !important;}
+    footer {visibility: hidden !important; display: none !important;}
+    div[class^="embeddedAppMetaInfoBar"] {visibility: hidden !important; display: none !important;}
+    .stAppDeployButton {display: none !important;}
+    </style>
+""", unsafe_allow_html=True)
+
+# 2. Main Headers
 st.title("BotX Diagnostic Tool")
+st.caption("BotX error code database")
 
-# UPDATED: Changed the subtitle text
-st.caption("BotX Error Code Database")
-
-# 2. Load the Local Database (Cached so it loads instantly)
+# 3. Load the Local Database (Cached so it loads instantly)
 @st.cache_data
 def load_database():
     return pd.read_excel("workbook.xlsx", sheet_name=None, dtype=str)
@@ -22,7 +29,7 @@ except Exception as e:
     st.error(f"Failed to load diagnostic database: {e}")
     st.stop()
 
-# 3. Fuzzy Matching Helper Function
+# 4. Fuzzy Matching Helper Function
 def is_smart_match(search_term, cell_value):
     if pd.isna(cell_value):
         return False
@@ -39,13 +46,13 @@ def is_smart_match(search_term, cell_value):
             return True
     return False
 
-# 4. Search UI Component Input Bar
+# 5. Search UI Component Input Bar
 search_term = st.text_input("Search Error Code:", placeholder="e.g., E-000, E010, Plasma...")
 
 # Professional Label Translations
 PROFESSIONAL_LABELS = {
     "error code": "Error Code",
-    "code explanation": "Description",
+    "code explanation": "Condition / Description",
     "first try": "Check 1",
     "then try": "Check 2",
     "lastly it might be": "Check 3",
@@ -53,7 +60,7 @@ PROFESSIONAL_LABELS = {
     "note": "Technical Note"
 }
 
-# 5. Execution Search Scanning Core
+# 6. Execution Search Scanning Core
 if search_term:
     matched_entries = []
     
@@ -76,7 +83,6 @@ if search_term:
         
         for item in matched_entries:
             with st.container():
-                # UPDATED: Removed "Column Values" completely, leaving just the sheet name
                 st.markdown(f"### `[{item['sheet']}]`")
                 
                 for orig_header, value in item["data"].items():
