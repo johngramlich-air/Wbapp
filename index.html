@@ -27,7 +27,7 @@
         }
         .search-container {
             display: flex;
-            gap: 30px;
+            gap: 12px;
             align-items: center;
             margin-bottom: 15px;
             flex-wrap: wrap;
@@ -35,23 +35,26 @@
         .search-label {
             font-family: Oswald, Roboto, Arial, sans-serif;
             font-weight: 700;
-            font-size: 30px;
+            font-size: 15px;
             color: #000000;
         }
-        .search-input {
-            padding: 11px 16px;                     /* Made it taller */
-            font-size: 16px;                        /* Made the text larger */
-            border: 1px solid #d1d1d1;
-            border-radius: 8px;                     /* Matches the 8px button corners */
-            width: 450px;                           /* Widened from 280px to 450px */
-            background-color: #ffffff;
-            color: #000000;
-            font-family: Roboto, Arial, sans-serif;
-            box-sizing: border-box;
+        
+        /* Direct ID selector with explicit priority overrides to force high-visibility sizing */
+        #botx-search-input {
+            padding: 12px 16px !important;
+            font-size: 16px !important;
+            border: 1px solid #d1d1d1 !important;
+            border-radius: 8px !important;
+            width: 450px !important;
+            background-color: #ffffff !important;
+            color: #000000 !important;
+            font-family: Roboto, Arial, sans-serif !important;
+            box-sizing: border-box !important;
         }
-        .search-input:focus {
-            outline: none;
-            border-color: #01133c;
+        #botx-search-input:focus {
+            outline: none !important;
+            border-color: #01133c !important;
+            box-shadow: 0 0 0 2px rgba(1, 19, 60, 0.1) !important;
         }
         
         /* Brand-Matched Primary Action Button */
@@ -131,10 +134,11 @@
 <body>
 
     <h2 class="header-title">BotX Diagnostic Tool</h2>
+    <p class="header-caption">BotX error code database</p>
 
     <div class="search-container">
         <span class="search-label">Search Error Code:</span>
-        <input type="text" id="botx-search-input" placeholder="e.g., C4A1, E010, Welds are inconsistent...">
+        <input type="text" id="botx-search-input" placeholder="e.g., C4A1, E010, Welds are...">
         <button id="botx-search-btn" class="btn-search">Check Error Code</button>
         <button id="botx-clear-btn" class="btn-clear">Clear</button>
     </div>
