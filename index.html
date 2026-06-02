@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BotX Diagnostic Tool</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 10px;
+            background-color: #ffffff;
+            color: #333333;
+        }
+        .header-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0 0 5px 0;
+            color: #333333;
+        }
+        .header-caption {
+            font-size: 14px;
+            font-style: italic;
+            color: #666666;
+            margin: 0 0 20px 0;
+        }
+        .search-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        .search-label {
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .search-input {
+            padding: 8px 12px;
+            font-size: 14px;
+            border: 1px solid #cccccc;
+            border-radius: 4px;
+            width: 280px;
+            background-color: #ffffff;
+            color: #333333;
+        }
+        .btn-search {
+            background-color: #107C41;
+            color: white;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: bold;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn-clear {
+            background-color: #7F8C8D;
+            color: white;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: bold;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .status-bar {
+            font-size: 13px;
+            color: gray;
+            font-style: italic;
+            margin-bottom: 15px;
+        }
+        .results-area {
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 14px;
+            background-color: #F9F9F9;
+            border: 1px solid #e1e4e8;
+            border-radius: 6px;
+            padding: 20px;
+            min-height: 250px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            line-height: 1.6;
+        }
+        .sheet-tag { font-family: sans-serif; font-weight: bold; color: #E67E22; }
+        .match-header { font-family: sans-serif; font-weight: bold; font-size: 15px; color: #0056B3; }
+        .label-tag { font-family: sans-serif; font-weight: bold; color: #333333; }
+    </style>
+</head>
+<body>
+
+    <h2 class="header-title">BotX Diagnostic Tool</h2>
+    <p class="header-caption">BotX error code database</p>
+
+    <div class="search-container">
+        <span class="search-label">Search Error Code:</span>
+        <input type="text" id="botx-search-input" placeholder="e.g., E-000, E010, Plasma...">
+        <button id="botx-search-btn" class="btn-search">Check Error Code</button>
+        <button id="botx-clear-btn" class="btn-clear">Clear</button>
+    </div>
+
+    <div id="botx-status" class="status-bar">System Ready</div>
+    <div id="botx-results-area" class="results-area">Matches and diagnostic steps will populate here when you execute a search query.</div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        // Reads workbook relatively from your same repo directory instantly
+        const EXCEL_URL = "workbook.xlsx";
+
+        const PROFESSIONAL_LABELS = {
+            "error code": "Error Code",
+            "code explanation": "Condition / Description",
+            "first try": "Check 1",
+            "then try": "Check 2",
+            "lastly it might be": "Check 3",
+            "one more pleaseeeee": "Check 4",
+            "note": "Technical Note"
+        };
+
+        const inputEl = document.getElementById("botx-search-input");
+        const searchBtn = document.getElementById("botx-search-btn");
+        const clearBtn = document.getElementById("botx-clear-btn");
+        const statusEl = document.getElementById("botx-status");
+        const resultsEl = document.getElementById("botx-results-area");
+
+        function isSmartMatch(searchTerm, cellValue) {
+            if (cellValue === null || cellValue === undefined) return false;
+            let sClean = String(searchTerm).replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+            let cClean = String(cellValue).replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+            if (!sClean) return false;
+            if (cClean.includes(sClean)) return true;
+            if (/^\d+$/.test(cClean) && sClean.startsWith('e')) {
+                let sNumericPart = sClean.slice(1);
+                if (sNumericPart.includes(cClean) || cClean.padStart(3, '0').includes(sNumericPart) || cClean.includes(sNumericPart)) return true;
+            }
+            return false;
+        }
+
+        async function performSearch() {
+            const query = inputEl.value.trim();
+            if (!query) return alert("Please enter an error code or keyword.");
+
+            statusEl.innerText = "Querying live systems registry...";
+            statusEl.style.color = "orange";
+
+            try {
+                const response = await fetch(EXCEL_URL);
+                if (!response.ok) throw new Error("Could not download database.");
+                const arrayBuffer = await response.arrayBuffer();
+                const data = new Uint8Array(arrayBuffer);
+                const workbook = XLSX.read(data, { type: 'array' });
+                let matchedRecords = [];
+
+                workbook.SheetNames.forEach(sheetName => {
+                    let lname = sheetName.toLowerCase();
+                    if (lname.includes("script") || lname.includes("properties") || sheetName.startsWith("NV")) return;
+
+                    const worksheet = workbook.Sheets[sheetName];
+                    const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    if (rows.length < 1) return;
+
+                    const headers = rows[0].map((h, i) => h ? String(h).trim() : `Column ${i + 1}`);
+
+                    for (let r = 1; r < rows.length; r++) {
+                        const row = rows[r];
+                        if (!row || row.every(cell => cell === null || cell === undefined || cell === "")) continue;
+
+                        let matchFound = false;
+                        for (let c = 0; c < row.length; c++) {
+                            if (isSmartMatch(query, row[c])) { matchFound = true; break; }
+                        }
+
+                        if (matchFound) {
+                            let rowData = [];
+                            headers.forEach((header, index) => {
+                                let cellVal = row[index] !== undefined && row[index] !== null ? String(row[index]).trim() : "";
+                                if (cellVal && cellVal.toLowerCase() !== "none") rowData.push([header, cellVal]);
+                            });
+                            if (rowData.length > 0) matchedRecords.push({ sheet: sheetName, data: rowData });
+                        }
+                    }
+                });
+
+                renderResults(matchedRecords);
+            } catch (error) {
+                statusEl.innerText = "Database load failed.";
+                statusEl.style.color = "red";
+                resultsEl.innerText = `Error: ${error.message}`;
+            }
+        }
+
+        function renderResults(results) {
+            resultsEl.innerHTML = "";
+            if (results.length === 0) {
+                resultsEl.innerText = "No matching records located in the diagnostic registries.";
+                statusEl.innerText = "Scan completed. 0 records found.";
+                statusEl.style.color = "red";
+                return;
+            }
+
+            results.forEach((item, index) => {
+                const sheetSpan = document.createElement("span");
+                sheetSpan.className = "sheet-tag";
+                sheetSpan.innerText = `[${item.sheet}] `;
+                resultsEl.appendChild(sheetSpan);
+
+                const [firstHeader, firstVal] = item.data[0];
+                const cleanFirstHeader = PROFESSIONAL_LABELS[firstHeader.toLowerCase()] || firstHeader;
+                const headerSpan = document.createElement("span");
+                headerSpan.className = "match-header";
+                headerSpan.innerText = `${cleanFirstHeader}: ${firstVal}\n\n`;
+                resultsEl.appendChild(headerSpan);
+
+                for (let i = 1; i < item.data.length; i++) {
+                    const [header, val] = item.data[i];
+                    const cleanHeader = PROFESSIONAL_LABELS[header.toLowerCase()] || header;
+
+                    const labelSpan = document.createElement("span");
+                    labelSpan.className = "label-tag";
+                    labelSpan.innerText = `${cleanHeader}: `;
+                    resultsEl.appendChild(labelSpan);
+
+                    const valSpan = document.createElement("span");
+                    valSpan.innerText = (i === item.data.length - 1 && index < results.length - 1) ? `${val}\n` : `${val}\n\n`;
+                    resultsEl.appendChild(valSpan);
+                }
+
+                if (index < results.length - 1) {
+                    const divSpan = document.createElement("span");
+                    divSpan.innerText = `${'━'.repeat(60)}\n\n`;
+                    divSpan.style.color = "#CCCCCC";
+                    resultsEl.appendChild(divSpan);
+                }
+            });
+
+            statusEl.innerText = `Scan complete. Found ${results.length} matching entry(ies).`;
+            statusEl.style.color = "green";
+        }
+
+        function clearAll() {
+            inputEl.value = "";
+            resultsEl.innerText = "Matches and diagnostic steps will populate here when you execute a search query.";
+            statusEl.innerText = "System Ready";
+            statusEl.style.color = "gray";
+            inputEl.focus();
+        }
+
+        searchBtn.addEventListener("click", performSearch);
+        clearBtn.addEventListener("click", clearAll);
+        inputEl.addEventListener("keypress", (e) => { if (e.key === "Enter") performSearch(); });
+    </script>
+</body>
+</html>
